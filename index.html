@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="カラオケの十八番を、歌い出し・キー・平均点つきで一覧にする個人用ノート">
+<meta name="theme-color" content="#F1F0F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121120" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23E3336B'/%3E%3Crect x='25' y='12' width='14' height='26' rx='7' fill='white'/%3E%3Cpath d='M17 30a15 15 0 0 0 30 0M32 45v8' stroke='white' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>十八番ノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@500;700&display=swap">
+<style>
+/* Layout: one centered column like a karaoke song book — header with the wiping title, an add bar, then a dense list of song rows. */
+:root{
+  --bg:#F1F0F7; --surface:#FFFFFF; --surface-2:#F7F6FB; --ink:#1A1830; --muted:#6C6A86; --line:#E3E1EE;
+  --accent:#E3336B; --accent-ink:#FFFFFF; --accent-soft:#FCE3EB; --cool:#3A62E0; --cool-soft:#E3E9FC;
+  --good:#1F9D6B; --warn:#C47A12;
+  --shadow:0 1px 2px rgba(26,24,48,.06),0 8px 24px -12px rgba(26,24,48,.18);
+  --f-display:"Dela Gothic One","Zen Kaku Gothic New","Hiragino Sans",sans-serif;
+  --f-ui:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+  --f-lyric:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
+  --f-num:"Bricolage Grotesque","Zen Kaku Gothic New",system-ui,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121120; --surface:#1B1A2D; --surface-2:#222037; --ink:#F1EFFA; --muted:#A3A0BF; --line:#2E2B47;
+  --accent:#FF5A8A; --accent-ink:#1A0A12; --accent-soft:#3A1A2A; --cool:#86A2FF; --cool-soft:#1E2646;
+  --good:#4FD19C; --warn:#F2B04B; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121120; --surface:#1B1A2D; --surface-2:#222037; --ink:#F1EFFA; --muted:#A3A0BF; --line:#2E2B47;
+  --accent:#FF5A8A; --accent-ink:#1A0A12; --accent-soft:#3A1A2A; --cool:#86A2FF; --cool-soft:#1E2646;
+  --good:#4FD19C; --warn:#F2B04B; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.wrap{max-width:960px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+
+/* ---------- header ---------- */
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px 24px}
+.brand{display:flex;flex-direction:column;gap:4px;min-width:0}
+.eyebrow{font-family:var(--f-num);font-weight:700;font-size:11px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+.logo{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,7vw,52px);line-height:1.05;margin:0;letter-spacing:.02em}
+/* karaoke telop wipe: the sung color sweeps over the unsung color */
+.wipe{background:linear-gradient(90deg,var(--accent) 0 50%,var(--ink) 50% 100%);background-size:200% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wipe 2.4s cubic-bezier(.45,.05,.3,1) .3s forwards}
+@keyframes wipe{to{background-position:0 0}}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 14px;min-width:96px;display:flex;flex-direction:column}
+.stat b{font-family:var(--f-num);font-weight:800;font-size:22px;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.06em}
+
+/* ---------- add + pick ---------- */
+.deck{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.addbox{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:8px;display:flex;flex-direction:column;gap:0;min-width:0}
+.addrow{display:flex;gap:8px;align-items:center}
+.addrow .mic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.addrow input{flex:1;min-width:0;border:0;background:transparent;font-size:17px;padding:10px 4px;outline:none}
+.addrow input::placeholder{color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 14px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:transform .12s,background .15s,border-color .15s}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:var(--surface-2)}
+.btn:disabled{opacity:.5;cursor:default}
+.pickbtn{border:0;border-radius:18px;padding:0 22px;min-height:74px;background:var(--ink);color:var(--bg);display:flex;align-items:center;gap:12px;font-weight:700;font-size:15px;box-shadow:var(--shadow);transition:transform .15s}
+.pickbtn:hover{transform:translateY(-1px)}
+.pickbtn:active{transform:scale(.98)}
+.pickbtn .dice{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.pickbtn small{display:block;font-weight:500;font-size:11px;opacity:.7;letter-spacing:.04em}
+
+.flow{border-top:1px dashed var(--line);margin:8px 4px 2px;padding:14px 6px 8px;display:flex;flex-direction:column;gap:12px}
+.flow p{margin:0}
+.flow .msg{font-weight:700}
+.flow .sub{color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.field{display:flex;gap:8px;flex-wrap:wrap}
+.input{flex:1;min-width:180px;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;outline:none}
+.input:focus{border-color:var(--accent)}
+textarea.input{width:100%;min-height:180px;resize:vertical;font-family:var(--f-lyric);line-height:1.9}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite;display:inline-block;vertical-align:-3px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- toolbar ---------- */
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px;flex:1;min-width:200px;max-width:360px}
+.search input{border:0;background:transparent;outline:none;padding:9px 0;flex:1;min-width:0}
+.search svg{color:var(--muted);flex:none}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg .dir{font-family:var(--f-num);font-size:12px}
+.sortlabel{font-size:12px;color:var(--muted);letter-spacing:.06em;margin-right:6px}
+
+/* ---------- list ---------- */
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.listhead{display:grid;grid-template-columns:minmax(0,1fr) 148px 104px 200px;gap:16px;padding:10px 20px;font-size:11px;letter-spacing:.14em;color:var(--muted);border-bottom:1px solid var(--line);font-family:var(--f-num);font-weight:700;text-transform:uppercase}
+.listhead span:nth-child(2),.listhead span:nth-child(3){text-align:center}
+.listhead span:last-child{text-align:right}
+.song{display:grid;grid-template-columns:minmax(0,1fr) 148px 104px 200px;gap:16px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);transition:background .2s}
+.song:last-child{border-bottom:0}
+.song:hover{background:var(--surface-2)}
+.song.flash{animation:flash 1.4s ease}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.title{font-weight:700;font-size:17px;line-height:1.35;overflow-wrap:anywhere;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.artist{font-size:12.5px;color:var(--muted);font-weight:500}
+.badge{font-size:10px;font-weight:700;letter-spacing:.08em;border-radius:6px;padding:1px 6px;background:var(--cool-soft);color:var(--cool);vertical-align:2px}
+.opening{font-family:var(--f-lyric);font-weight:500;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.opening::before{content:"♪";color:var(--accent);margin-right:6px;font-family:var(--f-ui)}
+.opening.none{font-family:var(--f-ui);font-size:12.5px;opacity:.8}
+.opening.none::before{content:"—";color:var(--muted)}
+
+.key{display:flex;align-items:center;justify-content:center;gap:4px}
+.kbtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1;transition:transform .1s,border-color .15s}
+.kbtn:hover{border-color:var(--ink)}
+.kbtn:active{transform:scale(.9)}
+.kval{min-width:60px;text-align:center;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.kval b{font-family:var(--f-num);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.kval b.zero{font-family:var(--f-ui);font-size:14px;font-weight:700;padding-block:4px}
+.kval.up b{color:var(--accent)}
+.kval.down b{color:var(--cool)}
+.ticks{display:flex;gap:2px;margin-top:4px}
+.ticks i{width:3px;height:6px;border-radius:2px;background:var(--line)}
+.ticks i.c{height:8px;margin-top:-1px;background:var(--muted)}
+.ticks i.on{background:currentColor}
+.kval.up .ticks{color:var(--accent)} .kval.down .ticks{color:var(--cool)}
+
+.score{border:0;background:transparent;border-radius:12px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.score:hover{background:var(--surface-2)}
+.score b{font-family:var(--f-num);font-weight:800;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.score b.empty{color:var(--line);font-size:22px}
+.score span{font-size:11px;color:var(--muted)}
+.meter{width:64px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--cool),var(--accent));border-radius:2px}
+
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.ibtn{white-space:nowrap;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;gap:5px;padding:0 10px;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
+.ibtn:hover{border-color:var(--ink)}
+.ibtn.rec{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.ibtn.rec:hover{border-color:var(--accent)}
+.ibtn.more{width:36px;justify-content:center;padding:0}
+.ibtn:disabled{opacity:.4;cursor:default}
+.ibtn:disabled:hover{border-color:var(--line)}
+
+.empty-state{padding:48px 24px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.empty-state h3{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0}
+.empty-state p{margin:0;color:var(--muted);max-width:36ch}
+.note{font-size:12.5px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.note .btn{font-size:12px;padding:6px 10px}
+
+@media (max-width:720px){
+  .deck{grid-template-columns:1fr}
+  .pickbtn{padding:14px 18px;justify-content:center}
+  .listhead{display:none}
+  .song{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"main score" "key acts";gap:12px 10px;padding:16px}
+  .score{align-self:start}
+  .main{grid-area:main}.key{grid-area:key;justify-content:flex-start}.score{grid-area:score}.acts{grid-area:acts}
+  .ibtn .lbl{display:none}
+  .ibtn{width:38px;justify-content:center;padding:0}
+}
+
+/* ---------- dialogs ---------- */
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:22px;box-shadow:0 30px 80px -20px rgba(0,0,0,.5);width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 48px);overflow:auto}
+dialog::backdrop{background:rgba(14,12,30,.55);backdrop-filter:blur(4px)}
+dialog[open]{animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}}
+.dlg{padding:22px 24px 24px;display:flex;flex-direction:column;gap:16px}
+.dlg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dlg-head h2{margin:0;font-size:20px;line-height:1.35;text-wrap:balance;overflow-wrap:anywhere}
+.dlg-head .artist{margin-top:2px;display:block}
+.x{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.lyrics{font-family:var(--f-lyric);font-weight:500;font-size:17px;line-height:2.05;white-space:pre-wrap;margin:0;padding:18px 20px;background:var(--surface-2);border-radius:14px;max-height:60dvh;overflow:auto;overflow-wrap:anywhere}
+.lyr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
+.keypill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;background:var(--surface-2);font-weight:700;font-size:12px;color:var(--ink)}
+.scorein{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:14px 0 4px}
+.scorein input{width:5.4em;text-align:center;border:0;border-bottom:3px solid var(--line);background:transparent;font-family:var(--f-num);font-weight:800;font-size:56px;line-height:1.1;outline:none;font-variant-numeric:tabular-nums;padding:0}
+.scorein input:focus{border-color:var(--accent)}
+.scorein span{font-weight:700;color:var(--muted)}
+.hint{text-align:center;font-size:13px;color:var(--muted);min-height:1.6em}
+.hint.err{color:var(--accent)}
+.hstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hstats div{background:var(--surface-2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
+.hstats b{font-family:var(--f-num);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.hstats span{font-size:11px;color:var(--muted)}
+.chart{width:100%;height:auto;display:block}
+.hlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hlist li{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line)}
+.hlist li:last-child{border-bottom:0}
+.hlist time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hlist b{font-family:var(--f-num);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.hlist .best{color:var(--accent)}
+.del{border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:8px;display:grid;place-items:center}
+.del:hover{color:var(--accent);background:var(--accent-soft)}
+.lbl-s{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+.stack{display:flex;flex-direction:column;gap:6px}
+.danger{color:var(--accent)}
+.confirm{background:var(--accent-soft);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* pick */
+.stage{border-radius:18px;padding:30px 20px 26px;text-align:center;background:radial-gradient(120% 90% at 50% 0%,var(--accent-soft),var(--surface-2) 70%);display:flex;flex-direction:column;gap:8px;align-items:center;min-height:190px;justify-content:center;overflow:hidden}
+.stage .now{font-size:11px;letter-spacing:.24em;color:var(--muted);font-family:var(--f-num);font-weight:700}
+.stage .ptitle{font-family:var(--f-display);font-weight:400;font-size:clamp(24px,6vw,34px);line-height:1.25;text-wrap:balance;overflow-wrap:anywhere;margin:0}
+.stage .ptitle.spinning{opacity:.55;filter:blur(.4px)}
+.stage .ptitle.landed{background:linear-gradient(90deg,var(--accent) 0 50%,var(--ink) 50% 100%);background-size:200% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wipe 1.6s cubic-bezier(.45,.05,.3,1) .1s forwards}
+.stage .pmeta{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:26px}
+.stage .opening{white-space:normal;max-width:30ch;text-align:center}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <div class="brand">
+      <span class="eyebrow">Ohako Note · Karaoke Repertoire</span>
+      <h1 class="logo"><span class="wipe">十八番ノート</span></h1>
+    </div>
+    <div class="stats" aria-label="集計">
+      <div class="stat"><b id="stCount">0</b><span>登録曲</span></div>
+      <div class="stat"><b id="stAvg">—</b><span>全体の平均点</span></div>
+      <div class="stat"><b id="stBest">—</b><span>自己ベスト</span></div>
+    </div>
+  </header>
+
+  <section class="deck">
+    <form class="addbox" id="addForm" autocomplete="off">
+      <div class="addrow">
+        <span class="mic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+        <label class="sr" for="addTitle">曲名</label>
+        <input id="addTitle" placeholder="曲名を入れて登録" enterkeyhint="go">
+        <button class="btn primary" id="addBtn" type="submit">登録</button>
+      </div>
+      <div class="flow" id="flow" hidden></div>
+    </form>
+    <button class="pickbtn" id="pickBtn" type="button">
+      <span class="dice" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></span>
+      <span>おまかせで一曲<small>登録曲からランダムに選ぶ</small></span>
+    </button>
+  </section>
+
+  <section class="tools" aria-label="絞り込みと並べ替え">
+    <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="曲名・アーティストで絞り込み" aria-label="絞り込み"></label>
+    <div style="display:flex;align-items:center"><span class="sortlabel">並べ替え</span>
+      <div class="seg" role="group" aria-label="並べ替え" id="seg">
+        <button type="button" data-sort="title">曲名<span class="dir"></span></button>
+        <button type="button" data-sort="avg">平均点<span class="dir"></span></button>
+        <button type="button" data-sort="added">追加順<span class="dir"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="list" id="list" aria-live="polite">
+    <div class="listhead" aria-hidden="true"><span>曲名 / 歌い出し</span><span>キー</span><span>平均点</span><span>操作</span></div>
+    <div id="rows"></div>
+  </section>
+  <div class="note" id="note"></div>
+</div>
+
+<dialog id="dLyrics"><div class="dlg">
+  <div class="dlg-head"><div><h2 id="lyTitle"></h2><span class="artist" id="lyArtist"></span></div><button class="x" data-close aria-label="閉じる"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="lyr-meta"><span class="keypill" id="lyKey"></span><span id="lySrc"></span></div>
+  <pre class="lyrics" id="lyBody"></pre>
+</div></dialog>
+
+<dialog id="dScore"><form class="dlg" id="scoreForm">
+  <div class="dlg-head"><div><span class="lbl-s">今回の点数</span><h2 id="scTitle"></h2></div><button type="button" class="x" data-close aria-label="閉じる"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="scorein"><label class="sr" for="scInput">点数</label><input id="scInput" inputmode="decimal" placeholder="00.000" autocomplete="off"><span>点</span></div>
+  <p class="hint" id="scHint">0〜100 の点数を入れてください（小数OK）</p>
+  <div class="row-btns" style="justify-content:flex-end"><button type="button" class="btn ghost" data-close>やめる</button><button class="btn primary" type="submit">記録する</button></div>
+</form></dialog>
+
+<dialog id="dHist"><div class="dlg">
+  <div class="dlg-head"><div><span class="lbl-s">点数の履歴</span><h2 id="hiTitle"></h2></div><button class="x" data-close aria-label="閉じる"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="hstats" id="hiStats"></div>
+  <div id="hiChart"></div>
+  <ul class="hlist" id="hiList"></ul>
+  <div class="row-btns" style="justify-content:flex-end"><button class="btn primary" id="hiRec" type="button">点数を記録</button></div>
+</div></dialog>
+
+<dialog id="dPick"><div class="dlg">
+  <div class="dlg-head"><span class="lbl-s">おまかせで一曲</span><button class="x" data-close aria-label="閉じる"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="stage"><span class="now">NEXT SONG</span><p class="ptitle" id="pkTitle"></p><span class="artist" id="pkArtist"></span><div class="pmeta" id="pkMeta"></div><div class="opening" id="pkOpen" hidden></div></div>
+  <div class="row-btns" style="justify-content:space-between"><button class="btn" id="pkAgain" type="button">もう一回</button><span class="row-btns"><button class="btn" id="pkLyr" type="button">歌詞を見る</button><button class="btn primary" id="pkRec" type="button">点数を記録</button></span></div>
+</div></dialog>
+
+<dialog id="dEdit"><form class="dlg" id="editForm">
+  <div class="dlg-head"><div><span class="lbl-s">曲の編集</span><h2 id="edHead"></h2></div><button type="button" class="x" data-close aria-label="閉じる"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="stack"><label class="lbl-s" for="edTitle">曲名</label><input class="input" id="edTitle" required></div>
+  <div class="stack"><label class="lbl-s" for="edArtist">アーティスト</label><input class="input" id="edArtist"></div>
+  <div class="stack"><label class="lbl-s" for="edLyrics">歌詞</label><textarea class="input" id="edLyrics" placeholder="歌詞を貼り付け・入力（空欄なら歌詞なし）"></textarea>
+    <div class="row-btns"><button type="button" class="btn" id="edFetch">歌詞を自動で探し直す</button><span class="sub" id="edFetchMsg" style="font-size:12px;color:var(--muted);align-self:center"></span></div></div>
+  <div class="confirm" id="edConfirm" hidden><b class="danger">この曲と点数の履歴をすべて削除します。</b><div class="row-btns"><button type="button" class="btn" id="edNo">やめる</button><button type="button" class="btn primary" id="edYes">削除する</button></div></div>
+  <div class="row-btns" style="justify-content:space-between"><button type="button" class="btn ghost danger" id="edDel">この曲を削除</button><span class="row-btns"><button type="button" class="btn ghost" data-close>やめる</button><button class="btn primary" type="submit">保存</button></span></div>
+</form></dialog>
+
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const KEY_MIN = -7, KEY_MAX = 7;
+const LS_SONGS = "ohako.songs.v1", LS_PREFS = "ohako.prefs.v1";
+const icon = {
+  lyr:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>',
+  rec:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  more:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  del:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>'
+};
+
+/* ---------------- state ---------------- */
+let songs = [];                 // [{id,title,artist,lyrics,source,key,scores:[{v,at}],createdAt,sample}]
+let prefs = {sort:"added", dir:-1};
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(LS_PREFS) || "{}")); } catch {}
+let backend = null;             // {kind, save(song), remove(id)}
+let readOnly = false;
+let loaded = false;
+const pendingKey = new Map();   // id -> timer (debounced key writes)
+
+/* ---------------- helpers ---------------- */
+const avgOf = s => s.scores && s.scores.length ? s.scores.reduce((a, b) => a + b.v, 0) / s.scores.length : null;
+const bestOf = s => s.scores && s.scores.length ? Math.max(...s.scores.map(x => x.v)) : null;
+const fmt = (n, d = 2) => n == null ? "—" : n.toFixed(d);
+const fmtScore = v => (Math.round(v * 1000) / 1000).toString();
+const firstLine = t => { if (!t) return ""; for (const l of t.split(/\r?\n/)) { const x = l.trim(); if (x && !/^\[.*\]$/.test(x)) return x; } return ""; };
+const keyLabel = k => k === 0 ? "原キー" : (k > 0 ? "+" + k : "−" + Math.abs(k));
+const keyWord = k => k === 0 ? "原曲キー" : (k > 0 ? "キー +" + k : "キー −" + Math.abs(k));
+const uid = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const norm = s => String(s || "").toLowerCase().normalize("NFKC").replace(/[\s・'’"“”!！?？。、,.\-–—~〜()（）［］\[\]]/g, "");
+const collator = new Intl.Collator("ja", {sensitivity:"base", numeric:true});
+const byId = id => songs.find(s => s.id === id);
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2400); }
+function savePrefs(){ try { localStorage.setItem(LS_PREFS, JSON.stringify(prefs)); } catch {} }
+const plain = s => ({title:s.title, artist:s.artist || "", lyrics:s.lyrics || "", source:s.source || "none", key:s.key || 0, scores:(s.scores || []).map(x => ({v:x.v, at:x.at})), createdAt:s.createdAt || Date.now(), sample:!!s.sample});
+
+/* ---------------- storage ---------------- */
+function localBackend(){
+  const write = () => { try { localStorage.setItem(LS_SONGS, JSON.stringify(songs.map(s => ({id:s.id, ...plain(s)})))); } catch {} };
+  return { kind:"local", save: async () => write(), remove: async () => write() };
+}
+function loadLocal(){
+  try { const raw = localStorage.getItem(LS_SONGS); if (raw) return JSON.parse(raw); } catch {}
+  return null;
+}
+function sampleSongs(){
+  const now = Date.now(), d = 864e5;
+  return [
+    {id:"sample-furusato", title:"故郷", artist:"文部省唱歌", source:"manual", key:-2, sample:true, createdAt:now - 9*d,
+     lyrics:"兎追いし　かの山\n小鮒釣りし　かの川\n夢は今も　めぐりて\n忘れがたき　故郷\n\n如何にいます　父母\n恙なしや　友がき\n雨に風に　つけても\n思い出ずる　故郷\n\n志を　はたして\nいつの日にか　帰らん\n山は青き　故郷\n水は清き　故郷",
+     scores:[{v:86.412,at:now-8*d},{v:88.905,at:now-5*d},{v:91.237,at:now-1*d}]},
+    {id:"sample-akatombo", title:"赤とんぼ", artist:"三木露風・山田耕筰", source:"manual", key:0, sample:true, createdAt:now - 7*d,
+     lyrics:"夕焼小焼の　赤とんぼ\n負われて見たのは　いつの日か\n\n山の畑の　桑の実を\n小籠に摘んだは　まぼろしか\n\n十五で姐やは　嫁に行き\nお里のたよりも　絶えはてた\n\n夕焼小焼の　赤とんぼ\nとまっているよ　竿の先",
+     scores:[{v:92.118,at:now-6*d},{v:90.553,at:now-2*d}]},
+    {id:"sample-harugakita", title:"春が来た", artist:"文部省唱歌", source:"manual", key:3, sample:true, createdAt:now - 3*d,
+     lyrics:"春が来た　春が来た　どこに来た\n山に来た　里に来た　野にも来た\n\n花が咲く　花が咲く　どこに咲く\n山に咲く　里に咲く　野にも咲く\n\n鳥が鳴く　鳥が鳴く　どこで鳴く\n山で鳴く　里で鳴く　野でも鳴く",
+     scores:[]}
+  ];
+}
+
+async function initStorage(){
+  let db = null;
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
+  if (!db){
+    backend = localBackend();
+    songs = loadLocal() || sampleSongs();
+    loaded = true;
+    setNote("local");
+    render();
+    return;
+  }
+  const col = db.collection("songs");
+  const queues = new Map();
+  const chain = (id, fn) => { const p = (queues.get(id) || Promise.resolve()).then(fn, fn); queues.set(id, p.catch(() => {})); return p; };
+  const onWriteError = e => {
+    if (e && e.code === "invalid_argument"){ readOnly = true; toast("このページでは保存できません（閲覧のみ）"); render(); }
+    else if (e && e.code === "quota_exceeded"){ toast("保存できる容量の上限です。不要な曲を削除してください"); }
+    else toast("保存に失敗しました。通信状況を確認してもう一度お試しください");
+  };
+  backend = {
+    kind:"db",
+    save: song => chain(song.id, () => col.doc(song.id).set(plain(song))).catch(onWriteError),
+    remove: id => chain(id, () => col.doc(id).delete()).catch(onWriteError)
+  };
+  try {
+    const user = await window.claude.use("user");
+    if (user && typeof user.can === "function"){ const c = await user.can("data.write"); if (c === false) readOnly = true; }
+  } catch {}
+  const slow = setTimeout(() => { if (!loaded) { setNote("slow"); } }, 10000);
+  col.onSnapshot(snap => {
+    const incoming = snap.docs.map(d => ({id:d.id, ...structuredClone(d.data())}));
+    // keep local key for songs whose key write is still pending
+    songs = incoming.map(s => { if (pendingKey.has(s.id)) { const cur = byId(s.id); if (cur) s.key = cur.key; } return s; });
+    if (!snap.metadata.fromCache){ loaded = true; clearTimeout(slow); setNote("db"); }
+    render();
+  }, err => { clearTimeout(slow); loaded = true; setNote("error"); render(); });
+}
+function setNote(kind){
+  const n = $("#note");
+  const sampleCount = songs.filter(s => s.sample).length;
+  const clear = sampleCount ? `<button class="btn" type="button" id="clearSamples">サンプル曲を消す（${sampleCount}曲）</button>` : "";
+  const msg = {
+    local:"この端末のブラウザに保存しています。",
+    db:"あなた専用のノートに保存しています。どの端末から開いても同じ内容です。",
+    slow:"保存先にまだ接続できていません。表示が古い可能性があります。",
+    error:"保存先に接続できませんでした。ページを開き直してください。"
+  }[kind] || "";
+  const backup = kind === "local" && !window.claude ? `<button class="btn" type="button" id="exportBtn">バックアップを保存</button><button class="btn" type="button" id="importBtn">バックアップから復元</button>` : "";
+  n.dataset.kind = kind;
+  n.innerHTML = `<span>${msg}</span><span class="row-btns">${backup}${clear}</span>`;
+}
+
+/* ---------------- lyrics (LRCLIB) ---------------- */
+let apiDown = false;
+async function lrclib(title, artist){
+  if (apiDown) throw new Error("down");
+  const p = new URLSearchParams({track_name:title});
+  if (artist) p.set("artist_name", artist);
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch("https://lrclib.net/api/search?" + p.toString(), {signal:ctl.signal});
+    if (!r.ok) throw new Error("http " + r.status);
+    const j = await r.json();
+    return (Array.isArray(j) ? j : []).filter(x => x && (x.plainLyrics || x.instrumental));
+  } catch (e) { apiDown = true; throw e; }
+  finally { clearTimeout(t); }
+}
+function groupByArtist(results, title){
+  const nt = norm(title);
+  let hits = results.filter(r => { const n = norm(r.trackName); return n === nt || n.includes(nt) || nt.includes(n); });
+  if (!hits.length) hits = results;
+  const groups = new Map();
+  for (const r of hits){ const k = norm(r.artistName); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  return [...groups.values()].map(list => list.sort((a, b) => (b.plainLyrics ? 1 : 0) - (a.plainLyrics ? 1 : 0))[0]);
+}
+
+/* ---------------- add flow ---------------- */
+let flow = null; // {step, title, artist, candidates, msg}
+function setFlow(f){ flow = f; renderFlow(); }
+function renderFlow(){
+  const el = $("#flow");
+  if (!flow){ el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  const t = esc(flow.title);
+  if (flow.step === "searching"){
+    el.innerHTML = `<p class="msg"><span class="spinner"></span>「${t}」の歌詞を探しています…</p>`;
+    return;
+  }
+  if (flow.step === "artist"){
+    const chips = (flow.candidates || []).slice(0, 8).map((c, i) => `<button type="button" class="chip" data-cand="${i}">${esc(c.artistName)}</button>`).join("");
+    el.innerHTML = `
+      <p class="msg">${flow.candidates && flow.candidates.length ? `「${t}」は同じ曲名が${flow.candidates.length}件あります。アーティスト名を入れてください。` : `「${t}」の歌詞が見つかりませんでした。アーティスト名を入れると見つかるかもしれません。`}</p>
+      ${chips ? `<div class="stack"><span class="sub">候補から選ぶ</span><div class="chips">${chips}</div></div>` : ""}
+      <div class="field"><label class="sr" for="flowArtist">アーティスト名</label><input class="input" id="flowArtist" placeholder="アーティスト名" value="${esc(flow.artist || "")}" enterkeyhint="search"><button type="button" class="btn primary" id="flowArtistGo">この名前で探す</button></div>
+      <div class="row-btns"><button type="button" class="btn ghost" id="flowNone">歌詞なしで登録</button><button type="button" class="btn ghost" id="flowManual">歌詞を手入力</button><button type="button" class="btn ghost" id="flowCancel">やめる</button></div>`;
+    setTimeout(() => { const i = $("#flowArtist"); i && i.focus(); }, 30);
+    return;
+  }
+  if (flow.step === "fallback"){
+    el.innerHTML = `
+      <p class="msg">${flow.msg || `「${t}」の歌詞は見つかりませんでした。`}</p>
+      <p class="sub">歌詞なしで登録しておき、あとから「⋯」→ 編集で入れることもできます。</p>
+      ${flow.artist !== undefined ? "" : ""}
+      <div class="row-btns"><button type="button" class="btn primary" id="flowNone">歌詞なしで登録</button><button type="button" class="btn" id="flowManual">歌詞を手入力</button><button type="button" class="btn ghost" id="flowRetryArtist">アーティスト名を変えて探す</button><button type="button" class="btn ghost" id="flowCancel">やめる</button></div>`;
+    return;
+  }
+  if (flow.step === "manual"){
+    el.innerHTML = `
+      <p class="msg">「${t}」の歌詞を入力</p>
+      <div class="field"><label class="sr" for="flowManArtist">アーティスト名</label><input class="input" id="flowManArtist" placeholder="アーティスト名（任意）" value="${esc(flow.artist || "")}"></div>
+      <label class="sr" for="flowLyrics">歌詞</label><textarea class="input" id="flowLyrics" placeholder="歌詞を貼り付け・入力。冒頭だけでもOK"></textarea>
+      <div class="row-btns" style="justify-content:flex-end"><button type="button" class="btn ghost" id="flowCancel">やめる</button><button type="button" class="btn primary" id="flowSaveManual">登録する</button></div>`;
+    setTimeout(() => { $("#flowLyrics").focus(); }, 30);
+  }
+}
+$("#flow").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.cand != null){ const c = flow.candidates[+b.dataset.cand]; register({title:c.trackName || flow.title, artist:c.artistName, lyrics:c.plainLyrics || "", source:c.plainLyrics ? "lrclib" : "none", instrumental:c.instrumental}); return; }
+  switch (b.id){
+    case "flowArtistGo": searchWithArtist(($("#flowArtist").value || "").trim()); break;
+    case "flowNone": register({title:flow.title, artist:flow.artist || "", lyrics:"", source:"none"}); break;
+    case "flowManual": setFlow({...flow, step:"manual"}); break;
+    case "flowRetryArtist": setFlow({...flow, step:"artist", candidates:[]}); break;
+    case "flowCancel": setFlow(null); $("#addTitle").focus(); break;
+    case "flowSaveManual": {
+      const ly = $("#flowLyrics").value.trim();
+      register({title:flow.title, artist:($("#flowManArtist").value || "").trim(), lyrics:ly, source:ly ? "manual" : "none"});
+    }
+  }
+});
+$("#flow").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "flowArtist"){ e.preventDefault(); searchWithArtist(e.target.value.trim()); }
+});
+$("#addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (readOnly){ toast("閲覧のみのため登録できません"); return; }
+  const title = $("#addTitle").value.trim();
+  if (!title){ $("#addTitle").focus(); return; }
+  const dup = songs.find(s => norm(s.title) === norm(title));
+  setFlow({step:"searching", title});
+  let res;
+  try { res = await lrclib(title); }
+  catch { setFlow({step:"fallback", title, msg:"歌詞の自動取得につながりませんでした（オフライン、またはこの表示環境では外部への接続が制限されています）。"}); return; }
+  if (!flow || flow.title !== title) return;
+  const groups = groupByArtist(res, title);
+  if (groups.length === 1){
+    const c = groups[0];
+    if (dup && norm(dup.artist) === norm(c.artistName)){ toast("この曲はもう登録されています"); setFlow(null); highlight(dup.id); return; }
+    register({title:c.trackName || title, artist:c.artistName, lyrics:c.plainLyrics || "", source:c.plainLyrics ? "lrclib" : "none", instrumental:c.instrumental});
+  } else {
+    setFlow({step:"artist", title, candidates:groups});
+  }
+});
+async function searchWithArtist(artist){
+  if (!artist){ $("#flowArtist") && $("#flowArtist").focus(); return; }
+  const title = flow.title;
+  setFlow({step:"searching", title, artist});
+  let res;
+  try { res = await lrclib(title, artist); }
+  catch { setFlow({step:"fallback", title, artist, msg:"歌詞の自動取得につながりませんでした。"}); return; }
+  const na = norm(artist);
+  const hit = res.find(r => norm(r.artistName).includes(na) || na.includes(norm(r.artistName))) || res[0];
+  if (hit) register({title:hit.trackName || title, artist:hit.artistName, lyrics:hit.plainLyrics || "", source:hit.plainLyrics ? "lrclib" : "none", instrumental:hit.instrumental});
+  else setFlow({step:"fallback", title, artist, msg:`「${esc(title)}」（${esc(artist)}）の歌詞は見つかりませんでした。`});
+}
+function register({title, artist, lyrics, source, instrumental}){
+  const s = {id:uid(), title, artist:artist || "", lyrics:lyrics || "", source, key:0, scores:[], createdAt:Date.now(), sample:false};
+  songs.push(s);
+  backend.save(s);
+  setFlow(null);
+  $("#addTitle").value = "";
+  render();
+  highlight(s.id);
+  toast(instrumental ? "登録しました（インスト曲のため歌詞なし）" : source === "lrclib" ? "登録しました。歌詞も取得済みです" : "登録しました");
+}
+function highlight(id){
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`.song[data-id="${CSS.escape(id)}"]`);
+    if (!row) return;
+    row.scrollIntoView({block:"nearest", behavior:"smooth"});
+    row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+  });
+}
+
+/* ---------------- list render ---------------- */
+function sorted(){
+  const q = norm($("#q").value);
+  let list = songs.filter(s => !q || norm(s.title).includes(q) || norm(s.artist).includes(q));
+  const d = prefs.dir;
+  if (prefs.sort === "title") list.sort((a, b) => d * collator.compare(a.title, b.title));
+  else if (prefs.sort === "avg") list.sort((a, b) => { const x = avgOf(a), y = avgOf(b); if (x == null && y == null) return collator.compare(a.title, b.title); if (x == null) return 1; if (y == null) return -1; return d * (x - y) || collator.compare(a.title, b.title); });
+  else list.sort((a, b) => d * ((a.createdAt || 0) - (b.createdAt || 0)));
+  return list;
+}
+function ticks(k){
+  let h = "";
+  for (let i = KEY_MIN; i <= KEY_MAX; i++){
+    const on = (k > 0 && i > 0 && i <= k) || (k < 0 && i < 0 && i >= k);
+    h += `<i class="${i === 0 ? "c" : ""}${on ? " on" : ""}"></i>`;
+  }
+  return `<span class="ticks" aria-hidden="true">${h}</span>`;
+}
+function keyHTML(s){
+  const k = s.key || 0, cls = k > 0 ? "up" : k < 0 ? "down" : "";
+  return `<div class="key" role="group" aria-label="キー">
+    <button class="kbtn" type="button" data-act="kdown" aria-label="キーを下げる" ${k <= KEY_MIN || readOnly ? "disabled" : ""}>−</button>
+    <span class="kval ${cls}" aria-live="polite" aria-label="${keyWord(k)}"><b class="${k === 0 ? "zero" : ""}">${keyLabel(k)}</b>${ticks(k)}</span>
+    <button class="kbtn" type="button" data-act="kup" aria-label="キーを上げる" ${k >= KEY_MAX || readOnly ? "disabled" : ""}>+</button></div>`;
+}
+function rowHTML(s){
+  const a = avgOf(s), n = (s.scores || []).length, op = firstLine(s.lyrics);
+  return `<article class="song" data-id="${esc(s.id)}">
+    <div class="main">
+      <div class="title"><span>${esc(s.title)}</span>${s.sample ? '<span class="badge">サンプル</span>' : ""}</div>
+      ${s.artist ? `<span class="artist">${esc(s.artist)}</span>` : ""}
+      <div class="opening ${op ? "" : "none"}">${op ? esc(op) : "歌詞なし"}</div>
+    </div>
+    ${keyHTML(s)}
+    <button class="score" type="button" data-act="hist" aria-label="点数の履歴を見る">
+      <b class="${a == null ? "empty" : ""}">${a == null ? "—" : fmt(a)}</b>
+      <span class="meter"><i style="width:${a == null ? 0 : Math.max(0, Math.min(100, a))}%"></i></span>
+      <span>${n ? `平均 · ${n}回` : "未記録"}</span>
+    </button>
+    <div class="acts">
+      <button class="ibtn" type="button" data-act="lyr" ${s.lyrics ? "" : "disabled"} aria-label="歌詞を表示">${icon.lyr}<span class="lbl">歌詞</span></button>
+      <button class="ibtn rec" type="button" data-act="rec" ${readOnly ? "disabled" : ""} aria-label="点数を記録">${icon.rec}<span class="lbl">記録</span></button>
+      <button class="ibtn more" type="button" data-act="edit" ${readOnly ? "disabled" : ""} aria-label="編集・削除">${icon.more}</button>
+    </div>
+  </article>`;
+}
+function render(){
+  // stats
+  const all = songs.flatMap(s => s.scores || []);
+  $("#stCount").textContent = songs.length;
+  $("#stAvg").textContent = all.length ? fmt(all.reduce((a, b) => a + b.v, 0) / all.length) : "—";
+  $("#stBest").textContent = all.length ? fmtScore(Math.max(...all.map(x => x.v))) : "—";
+  // sort buttons
+  document.querySelectorAll("#seg button").forEach(b => {
+    const on = b.dataset.sort === prefs.sort;
+    b.setAttribute("aria-pressed", on);
+    const arrows = {title:prefs.dir > 0 ? "あ→ん" : "ん→あ", avg:prefs.dir < 0 ? "↓" : "↑", added:prefs.dir < 0 ? "新" : "古"};
+    b.querySelector(".dir").textContent = on ? arrows[b.dataset.sort] : "";
+  });
+  $("#pickBtn").disabled = songs.length === 0;
+  const rows = $("#rows");
+  if (!loaded){ rows.innerHTML = `<div class="empty-state"><p><span class="spinner"></span>ノートを読み込んでいます…</p></div>`; return; }
+  if (!songs.length){
+    rows.innerHTML = `<div class="empty-state"><h3>まだ一曲もありません</h3><p>上の欄に十八番の曲名を入れて「登録」。歌詞は自動で探して、歌い出しがここに並びます。</p></div>`;
+  } else {
+    const list = sorted();
+    rows.innerHTML = list.length ? list.map(rowHTML).join("") : `<div class="empty-state"><p>「${esc($("#q").value)}」に当てはまる曲はありません。</p></div>`;
+  }
+  const kind = $("#note").dataset.kind; if (kind) setNote(kind);
+}
+
+/* ---------------- list interactions ---------------- */
+$("#rows").addEventListener("click", e => {
+  const b = e.target.closest("button[data-act]"); if (!b || b.disabled) return;
+  const s = byId(b.closest(".song").dataset.id); if (!s) return;
+  const act = b.dataset.act;
+  if (act === "kup" || act === "kdown") changeKey(s, act === "kup" ? 1 : -1);
+  else if (act === "lyr") openLyrics(s);
+  else if (act === "rec") openScore(s);
+  else if (act === "hist") openHistory(s);
+  else if (act === "edit") openEdit(s);
+});
+function changeKey(s, d){
+  const k = Math.max(KEY_MIN, Math.min(KEY_MAX, (s.key || 0) + d));
+  if (k === s.key) return;
+  s.key = k;
+  const row = document.querySelector(`.song[data-id="${CSS.escape(s.id)}"] .key`);
+  if (row) row.outerHTML = keyHTML(s);
+  clearTimeout(pendingKey.get(s.id));
+  pendingKey.set(s.id, setTimeout(async () => { await backend.save(s); pendingKey.delete(s.id); }, 600));
+}
+document.querySelectorAll("#seg button").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.sort;
+  if (prefs.sort === k) prefs.dir = -prefs.dir;
+  else { prefs.sort = k; prefs.dir = k === "title" ? 1 : -1; }
+  savePrefs(); render();
+}));
+$("#q").addEventListener("input", render);
+$("#note").addEventListener("click", async e => {
+  if (e.target.id === "exportBtn"){
+    const blob = new Blob([JSON.stringify({app:"ohako-note", version:1, exportedAt:new Date().toISOString(), songs:songs.map(s => ({id:s.id, ...plain(s)}))}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `ohako-note-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast("バックアップを保存しました"); return;
+  }
+  if (e.target.id === "importBtn"){ $("#importFile").click(); return; }
+  if (e.target.id !== "clearSamples") return;
+  const ids = songs.filter(s => s.sample).map(s => s.id);
+  songs = songs.filter(s => !s.sample);
+  for (const id of ids) await backend.remove(id);
+  render(); toast("サンプル曲を消しました");
+});
+
+$("#importFile").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    const list = Array.isArray(j) ? j : j.songs;
+    if (!Array.isArray(list)) throw new Error("format");
+    let added = 0, updated = 0;
+    for (const raw of list){
+      if (!raw || typeof raw.title !== "string") continue;
+      const s = {id:String(raw.id || uid()), ...plain(raw)};
+      const i = songs.findIndex(x => x.id === s.id);
+      if (i >= 0){ songs[i] = s; updated++; } else { songs.push(s); added++; }
+      await backend.save(s);
+    }
+    render(); toast(`復元しました（追加 ${added}曲・更新 ${updated}曲）`);
+  } catch { toast("読み込めませんでした。十八番ノートのバックアップファイルを選んでください"); }
+});
+
+/* ---------------- dialogs ---------------- */
+document.querySelectorAll("dialog").forEach(d => {
+  d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-close]")) d.close(); });
+});
+const open = d => { if (!d.open) d.showModal(); };
+let curId = null;
+
+function openLyrics(s){
+  curId = s.id;
+  $("#lyTitle").textContent = s.title;
+  $("#lyArtist").textContent = s.artist || "";
+  $("#lyKey").textContent = keyWord(s.key || 0);
+  $("#lySrc").textContent = s.source === "lrclib" ? "歌詞: LRCLIB" : s.source === "manual" ? "歌詞: 手入力" : "";
+  $("#lyBody").textContent = s.lyrics || "歌詞は登録されていません。";
+  open($("#dLyrics")); $("#lyBody").scrollTop = 0;
+}
+
+function openScore(s){
+  curId = s.id;
+  $("#scTitle").textContent = s.title;
+  $("#scInput").value = "";
+  const a = avgOf(s);
+  const hint = $("#scHint"); hint.classList.remove("err");
+  hint.textContent = a == null ? "0〜100 の点数を入れてください（小数OK）" : `いまの平均は ${fmt(a)} 点`;
+  open($("#dScore")); setTimeout(() => $("#scInput").focus(), 40);
+}
+$("#scoreForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const s = byId(curId); if (!s) return;
+  const raw = $("#scInput").value.trim().normalize("NFKC").replace(/点$/, "");
+  const v = Number(raw);
+  if (!raw || !isFinite(v) || v < 0 || v > 100){ const h = $("#scHint"); h.textContent = "0〜100 の数字で入れてください"; h.classList.add("err"); return; }
+  const before = avgOf(s);
+  s.scores = [...(s.scores || []), {v:Math.round(v * 1000) / 1000, at:Date.now()}];
+  backend.save(s);
+  $("#dScore").close();
+  render(); highlight(s.id);
+  const best = bestOf(s);
+  if (s.scores.length > 1 && v >= best) toast(`${fmtScore(v)} 点。この曲の自己ベストです`);
+  else if (before != null){ const diff = v - before; toast(`${fmtScore(v)} 点を記録（平均より ${diff >= 0 ? "+" : "−"}${Math.abs(diff).toFixed(2)}）`); }
+  else toast(`${fmtScore(v)} 点を記録しました`);
+});
+
+function chartSVG(scores){
+  if (scores.length < 2) return "";
+  const W = 500, H = 150, pl = 34, pr = 14, pt = 14, pb = 22;
+  const vs = scores.map(x => x.v);
+  let lo = Math.floor((Math.min(...vs) - 2) / 5) * 5, hi = Math.ceil((Math.max(...vs) + 2) / 5) * 5;
+  lo = Math.max(0, lo); hi = Math.min(100, hi); if (hi - lo < 10){ hi = Math.min(100, lo + 10); lo = hi - 10; }
+  const x = i => pl + (W - pl - pr) * (scores.length === 1 ? .5 : i / (scores.length - 1));
+  const y = v => pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo));
+  const step = (hi - lo) > 20 ? 10 : 5;
+  let grid = "";
+  for (let g = lo; g <= hi; g += step) grid += `<line x1="${pl}" x2="${W - pr}" y1="${y(g)}" y2="${y(g)}" stroke="var(--line)" stroke-width="1"/><text x="${pl - 8}" y="${y(g) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="Bricolage Grotesque, sans-serif">${g}</text>`;
+  const pts = scores.map((s, i) => `${x(i)},${y(s.v)}`).join(" ");
+  const area = `M${x(0)},${H - pb} L${pts.replace(/ /g, " L")} L${x(scores.length - 1)},${H - pb} Z`;
+  const last = scores.length - 1;
+  const avg = vs.reduce((a, b) => a + b, 0) / vs.length;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="点数の推移">
+    <defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    ${grid}
+    <line x1="${pl}" x2="${W - pr}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--cool)" stroke-dasharray="4 4" stroke-width="1.2"/>
+    <path d="${area}" fill="url(#ga)"/>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    ${scores.map((s, i) => `<circle cx="${x(i)}" cy="${y(s.v)}" r="${i === last ? 5 : 3}" fill="${i === last ? "var(--accent)" : "var(--surface)"}" stroke="var(--accent)" stroke-width="2"/>`).join("")}
+  </svg><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>古い</span><span style="color:var(--cool)">- - 平均 ${avg.toFixed(2)}</span><span>新しい</span></div>`;
+}
+const dateFmt = new Intl.DateTimeFormat("ja-JP", {year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+function openHistory(s){
+  curId = s.id;
+  $("#hiTitle").textContent = s.title;
+  const sc = s.scores || [];
+  const a = avgOf(s), b = bestOf(s);
+  $("#hiStats").innerHTML = `<div><b>${fmt(a)}</b><span>平均点</span></div><div><b>${b == null ? "—" : fmtScore(b)}</b><span>最高点</span></div><div><b>${sc.length}</b><span>歌った回数</span></div>`;
+  $("#hiChart").innerHTML = chartSVG(sc);
+  $("#hiList").innerHTML = sc.length ? sc.map((x, i) => ({...x, i})).reverse().map(x => `<li><time>${dateFmt.format(new Date(x.at))}</time><b class="${x.v === b && sc.length > 1 ? "best" : ""}">${fmtScore(x.v)}</b><button class="del" type="button" data-i="${x.i}" aria-label="この記録を削除" ${readOnly ? "disabled" : ""}>${icon.del}</button></li>`).join("") : `<li style="grid-template-columns:1fr"><span class="sub" style="color:var(--muted)">まだ記録がありません。歌ったら点数を残しましょう。</span></li>`;
+  $("#hiRec").disabled = readOnly;
+  open($("#dHist"));
+}
+$("#hiList").addEventListener("click", e => {
+  const b = e.target.closest(".del"); if (!b) return;
+  const s = byId(curId); if (!s) return;
+  if (b.dataset.armed !== "1"){ b.dataset.armed = "1"; b.style.color = "var(--accent)"; b.setAttribute("aria-label", "もう一度押すと削除"); toast("もう一度押すと削除します"); setTimeout(() => { b.dataset.armed = ""; b.style.color = ""; }, 2500); return; }
+  s.scores = s.scores.filter((_, i) => i !== +b.dataset.i);
+  backend.save(s); render(); openHistory(s); toast("記録を削除しました");
+});
+$("#hiRec").addEventListener("click", () => { const s = byId(curId); $("#dHist").close(); if (s) openScore(s); });
+
+/* pick */
+let pickTimer = null, lastPick = null;
+function runPick(){
+  if (!songs.length) return;
+  const pool = songs.length > 1 ? songs.filter(s => s.id !== lastPick) : songs;
+  const final = pool[Math.floor(Math.random() * pool.length)];
+  lastPick = final.id; curId = final.id;
+  const t = $("#pkTitle");
+  ["#pkLyr", "#pkRec", "#pkAgain"].forEach(s => $(s).disabled = true);
+  $("#pkArtist").textContent = ""; $("#pkMeta").innerHTML = ""; $("#pkOpen").hidden = true;
+  t.className = "ptitle spinning";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let n = 0; const total = reduce ? 0 : 14;
+  clearTimeout(pickTimer);
+  const tick = () => {
+    if (n < total){ t.textContent = songs[Math.floor(Math.random() * songs.length)].title; n++; pickTimer = setTimeout(tick, 45 + n * n * 1.6); return; }
+    t.textContent = final.title;
+    t.className = "ptitle"; void t.offsetWidth; t.className = "ptitle landed";
+    $("#pkArtist").textContent = final.artist || "";
+    const a = avgOf(final);
+    $("#pkMeta").innerHTML = `<span class="keypill">${keyWord(final.key || 0)}</span><span class="keypill">${a == null ? "点数はまだ" : "平均 " + fmt(a)}</span>`;
+    const op = firstLine(final.lyrics);
+    $("#pkOpen").hidden = !op; $("#pkOpen").textContent = op;
+    $("#pkLyr").disabled = !final.lyrics; $("#pkRec").disabled = readOnly; $("#pkAgain").disabled = false;
+  };
+  tick();
+}
+$("#pickBtn").addEventListener("click", () => { open($("#dPick")); runPick(); });
+$("#pkAgain").addEventListener("click", runPick);
+$("#pkLyr").addEventListener("click", () => { const s = byId(curId); $("#dPick").close(); if (s) openLyrics(s); });
+$("#pkRec").addEventListener("click", () => { const s = byId(curId); $("#dPick").close(); if (s) openScore(s); });
+
+/* edit */
+function openEdit(s){
+  curId = s.id;
+  $("#edHead").textContent = s.title;
+  $("#edTitle").value = s.title; $("#edArtist").value = s.artist || ""; $("#edLyrics").value = s.lyrics || "";
+  $("#edConfirm").hidden = true; $("#edFetchMsg").textContent = "";
+  open($("#dEdit"));
+}
+$("#edFetch").addEventListener("click", async () => {
+  const title = $("#edTitle").value.trim(), artist = $("#edArtist").value.trim();
+  const m = $("#edFetchMsg"); if (!title) return;
+  m.textContent = "探しています…";
+  apiDown = false;
+  try {
+    const res = await lrclib(title, artist || undefined);
+    const groups = groupByArtist(res, title);
+    const na = norm(artist);
+    const hit = (artist ? groups.find(g => norm(g.artistName).includes(na) || na.includes(norm(g.artistName))) : null) || (groups.length === 1 ? groups[0] : null);
+    if (hit && hit.plainLyrics){ $("#edLyrics").value = hit.plainLyrics; if (!artist) $("#edArtist").value = hit.artistName; $("#edLyrics").dataset.src = "lrclib"; m.textContent = `見つかりました（${hit.artistName}）。保存で反映します`; }
+    else if (groups.length > 1 && !artist) m.textContent = `同じ曲名が${groups.length}件あります。アーティスト名を入れてください`;
+    else m.textContent = "見つかりませんでした";
+  } catch { m.textContent = "歌詞の自動取得につながりませんでした"; }
+});
+$("#edLyrics").addEventListener("input", () => { $("#edLyrics").dataset.src = "manual"; });
+$("#editForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const s = byId(curId); if (!s) return;
+  const title = $("#edTitle").value.trim(); if (!title) return;
+  const ly = $("#edLyrics").value.trim();
+  const changedLy = ly !== (s.lyrics || "");
+  s.title = title; s.artist = $("#edArtist").value.trim(); s.lyrics = ly;
+  if (changedLy) s.source = ly ? ($("#edLyrics").dataset.src || "manual") : "none";
+  s.sample = false;
+  delete $("#edLyrics").dataset.src;
+  backend.save(s); $("#dEdit").close(); render(); highlight(s.id); toast("保存しました");
+});
+$("#edDel").addEventListener("click", () => { $("#edConfirm").hidden = false; });
+$("#edNo").addEventListener("click", () => { $("#edConfirm").hidden = true; });
+$("#edYes").addEventListener("click", () => {
+  const s = byId(curId); if (!s) return;
+  songs = songs.filter(x => x.id !== s.id);
+  backend.remove(s.id); $("#dEdit").close(); render(); toast(`「${s.title}」を削除しました`);
+});
+
+render();
+initStorage();
+})();
+</script>
+
+</body>
+</html>
